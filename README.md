@@ -115,12 +115,12 @@ Gerenciar Jenkins -> Configurar o sistema -> Nuvem
     
     # Validando a sintaxe do Dockerfile
     
-    docker run --rm -i hadolint/hadolint < Dockerfile
+        docker run --rm -i hadolint/hadolint < jenkins-todo-list/Dockerfile
     
     # Build step 2: Build/Publish Docker Image
     
-        Directory for Dockerfile: ./
+        Directory for Dockerfile:  ./jenkins-todo-list/
         
         Cloud: docker
         
-        Image: rafaelvzago/django_todolist_image_build
+        Image: django_todolist_image_build
