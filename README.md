@@ -87,6 +87,18 @@ Crie o seu primeiro job, que vai monitorar o seu repositório:
 
 - Intalando o plugins do doker no jenkins,  fazer o jenkins subir a imagem seguindo os parametros estabelecidos no Dokerfile
 
+- Configure o daemon do Docke, isso deve ser feito na sua maquina virtual, e necessario para o jenkins poder controlar seu docker
+- 
+Expor o deamon do docker
+
+    sudo mkdir -p /etc/systemd/system/docker.service.d/
+    sudo vi /etc/systemd/system/docker.service.d/override.conf
+        [Service]
+        ExecStart=
+        ExecStart=/usr/bin/dockerd -H fd:// -H tcp://0.0.0.0:2376
+    sudo systemctl daemon-reload
+    sudo systemctl restart docker.service
+    
 Sugested Plugins
 
     Instalando os plugins
