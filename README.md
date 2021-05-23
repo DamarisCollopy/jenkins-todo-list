@@ -227,11 +227,12 @@ Etapa 5 Parametros para subir no dockerhub
         Valor padrão: tcp://127.0.0.1:2376
 
  No build step: Build / Publish Docker Image
+ 
     # Mudar o nome da imagem para: <seu-usuario-no-dockerhub>/django_todolist_image_build
-    # Marcar: Push Image 
-     e configurar **suas credenciais** no dockerhub
+    
+    # Marcar: Push Image e configurar **suas credenciais** no dockerhub
 
  Mudar no job de teste a imagem para: ${image}
-    docker run -d -p 82:8000 -v /var/run/mysqld/mysqld.sock:/var/run/mysqld/mysqld.sock -v /var/lib/jenkins/workspace/jenkins-todo-list-principal/to_do/.env:/usr/src/app/to_do/.env 
-   --name=todo-list-teste ${image}
+ 
+docker run -d -p 82:8000 -v /var/run/mysqld/mysqld.sock:/var/run/mysqld/mysqld.sock -v /var/lib/jenkins/workspace/jenkins-todo-list  principal/to_do/.env:/usr/src/app/to_do/.env --name=todo-list-teste ${image}
 
