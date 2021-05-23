@@ -88,20 +88,31 @@ Crie o seu primeiro job, que vai monitorar o seu repositório:
 - Intalando o plugins do doker no jenkins,  fazer o jenkins subir a imagem seguindo os parametros estabelecidos no Dokerfile
 
 Sugested Plugins
+
     Instalando os plugins
+    
     Gerenciar Jenkins -> Gerenciar Plugins -> Disponíveis
         # docker
     Install without restart -> Depois reiniciar o jenkins
+    
 Gerenciar Jenkins -> Configurar o sistema -> Nuvem
+
     # Name: docker
+    
     # URI: tcp://127.0.0.1:2376
+    
     # Enabled
+    
     # This project is parameterized: 
     DOCKER_HOST
     tcp://127.0.0.1:2376
+    
     # Voltar no job criado anteriormente
+    
     # Manter a mesma configuracao do GIT para desenvolvimento
+    
     # Build step 1: Executar Shell
+    
     # Validando a sintaxe do Dockerfile
     
     docker run --rm -i hadolint/hadolint < Dockerfile
