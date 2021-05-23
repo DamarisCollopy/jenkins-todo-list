@@ -234,5 +234,5 @@ Etapa 5 Parametros para subir no dockerhub
 
  Mudar no job de teste a imagem para: ${image}
  
-docker run -d -p 82:8000 -v /var/run/mysqld/mysqld.sock:/var/run/mysqld/mysqld.sock -v /var/lib/jenkins/workspace/jenkins-todo-list  principal/to_do/.env:/usr/src/app/to_do/.env --name=todo-list-teste ${image}
+    docker run -d -p 82:8000 -v /var/run/mysqld/mysqld.sock:/var/run/mysqld/mysqld.sock -v /var/lib/jenkins/workspace/jenkins-todo-list       principal/to_do/.env:/usr/src/app/to_do/.env --name=todo-list-teste ${image}
 
