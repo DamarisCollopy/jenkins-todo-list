@@ -136,3 +136,102 @@ Gerenciar Jenkins -> Configurar o sistema -> Nuvem
         Cloud: docker
         
         Image: django_todolist_image_build
+        
+#  Etapa 5 - Confguracao de controle de chave 
+
+- Utilizamos dois ambientes que é o ambiente de desenvolvimento e o ambiente de produção.O que diferencia um ambiente do outro? É somente o arquivo .env., esse arquivo .env contém o endereço do banco, usuário, senha, algumas chaves de configuração de criptografia. Então a gente tem que separar esses arquivos porque ele não está versionado no nosso GitHub. 
+
+- Isso é muito importante porque é o que garante a segurança da nossa aplicação.
+
+- Como é que a gente faz isso dentro do Jenkins? Nós vamos precisar de um plugin chamado Config File Provider.
+
+ Instalar o plugin Config File Provider
+
+ Configurar o Managed Files para Dev - banco de desenvolvmento
+ 
+    # Name : .env-dev
+        [config]
+        # Secret configuration
+        SECRET_KEY = ' '
+        # conf
+        DEBUG=True
+        # Database
+        DB_NAME = "todo_dev"
+        DB_USER = "devops_dev"
+        DB_PASSWORD = " "
+        DB_HOST = "localhost"
+        DB_PORT = "3306"
+
+  Configurar o Managed Files para Prod, banco de producao
+  
+    # Name: .env.-prod
+        [config]
+        # Secret configuration
+        SECRET_KEY = ' '
+        # conf
+        DEBUG=False
+        # Database
+        DB_NAME = "todo"
+        DB_USER = "devops"
+        DB_PASSWORD = " "
+        DB_HOST = "localhost"
+        DB_PORT = "3306"
+
+    No job: jenkins-todo-list-principal importar o env de dev para teste:  Nesse caso, pra testar, nós vamos utilizar o ambiente de Dev, o arquivo .env de dev. Nunca se deve         apontar testes pra produção.
+
+    Adicionar passo no build: Provide configuration Files
+    
+    File: .env-dev
+    
+    Target: ./to_do/.env
+
+    Adicionar passo no build: Executar Shell
+
+  Criando o Script para Subir o container com o arquivo de env e testar a app:
+  
+    #!/bin/sh
+
+    # Subindo o container de teste // Repare no --name=django_todolist_image_build, esse e o nome do meu container
+    
+    docker run -d -p 82:8000 -v /var/run/mysqld/mysqld.sock:/var/run/mysqld/mysqld.sock -v /var/lib/jenkins/workspace/jenkins-todo-list-                         principal/to_do/.env:/usr/src/app/to_do/.env --name=todo-list-teste django_todolist_image_build
+
+    # Testando a imagem
+    
+    docker exec -i todo-list-teste python manage.py test --keep
+    exit_code=$?
+
+    # Derrubando o container velho
+    
+    docker rm -f todo-list-teste
+
+    if [ $exit_code -ne 0 ]; then
+        exit 1
+
+    fi
+
+- A abordagem escolhida permite que a mesma imagem construída no processo seja utilizada para testes, validações e também para rodar em produção, visto que o arquivo .env de       cada ambiente
+  é passado na execução do container
+
+Etapa 5 Parametros para subir no dockerhub
+
+ Instalar o plugin: Parameterized Trigger 
+
+ Modificar o Job para startar com 2 parametros:
+    # Geral:
+    Este build é parametrizado com 2 parametros de string
+    
+        Nome: image
+        Valor padrão: <seu-usuario-no-dockerhub>/django_todolist_image_build
+
+        Nome: DOCKER_HOST
+        Valor padrão: tcp://127.0.0.1:2376
+
+ No build step: Build / Publish Docker Image
+    # Mudar o nome da imagem para: <seu-usuario-no-dockerhub>/django_todolist_image_build
+    # Marcar: Push Image 
+     e configurar **suas credenciais** no dockerhub
+
+ Mudar no job de teste a imagem para: ${image}
+    docker run -d -p 82:8000 -v /var/run/mysqld/mysqld.sock:/var/run/mysqld/mysqld.sock -v /var/lib/jenkins/workspace/jenkins-todo-list-principal/to_do/.env:/usr/src/app/to_do/.env 
+   --name=todo-list-teste ${image}
+
