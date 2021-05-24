@@ -355,3 +355,160 @@ A definir um pipeline, criando um job que, entre os seus passos, vai rodar a apl
     # todo-list-principal
     
     # Definir post build: image=$image
+
+# Etapa 8 Job deploy Producao
+
+# Criar o job para colocar a app em producao:
+    Nome: todo-list-producao
+    Tipo: Freestyle
+    # Este build é parametrizado com 2 Builds de Strings:
+        Nome: image
+        Valor padrão: - Vazio, pois o valor sera recebido do job anterior.
+
+        Nome: DOCKER_HOST
+        Valor padrão: tcp://127.0.0.1:2376
+
+    # Ambiente de build > Provide configuration files
+        File: .env-prod
+        Target: .env
+
+    # Build > Executar shell
+        #Execute shell
+        #!/bin/sh
+        { 
+            docker run -d -p 80:8000 -v /var/run/mysqld/mysqld.sock:/var/run/mysqld/mysqld.sock -v /var/lib/jenkins/workspace/todo-list-producao/.env:/usr/src/app/to_do/.env --name=django-todolist-prod $image:latest
+
+        } || { # catch
+            docker rm -f django-todolist-prod
+            docker run -d -p 80:8000 -v /var/run/mysqld/mysqld.sock:/var/run/mysqld/mysqld.sock -v /var/lib/jenkins/workspace/todo-list-producao/.env:/usr/src/app/to_do/.env --name=django-todolist-prod $image:latest
+        }    
+
+    Ações de pós-build > Slack Notifications: Notify Success e Notify Every Failure
+
+# Etapa 9  Faça a integração do jobs. 
+
+# Post build actions para os 3 jobs
+
+Job: jenkins-todo-list-principal > Ações de pós-build > Trigger parameterized buld on other projects
+    Projects to build: todo-list-desenvolvimento
+    # Add parameters > Predefined parameters
+        image=${image}
+
+Job: todo-list-desenvolvimento
+
+    pipeline {
+        environment {
+            dockerImage = "${image}"
+        }
+        agent any
+
+        stages {
+            stage('Carregando o ENV de desenvolvimento') {
+                steps {
+                    configFileProvider([configFile(fileId: 'seu id gerado', variable: 'env')]) {
+                        sh 'cat $env > .env'
+                    }
+                }
+            }
+            stage('Derrubando o container antigo') {
+                steps {
+                    script {
+                        try {
+                            sh 'docker rm -f django-todolist-dev'
+                        } catch (Exception e) {
+                            sh "echo $e"
+                        }
+                    }
+                }
+            }        
+            stage('Subindo o container novo') {
+                steps {
+                    script {
+                        try {
+                            sh 'docker run -d -p 81:8000 -v /var/run/mysqld/mysqld.sock:/var/run/mysqld/mysqld.sock -v /var/lib/jenkins/workspace/todo-list-desenvolvimento/.env:/usr/src/app/to_do/.env --name=django-todolist-dev ' + dockerImage + ':latest'
+                        } catch (Exception e) {
+                            slackSend (color: 'error', message: "[ FALHA ] Não foi possivel subir o container - ${BUILD_URL} em ${currentBuild.duration}s", tokenCredentialId: 'slack-token')
+                            sh "echo $e"
+                            currentBuild.result = 'ABORTED'
+                            error('Erro')
+                        }
+                    }
+                }
+            }
+            stage('Notificando o usuario') {
+                steps {
+                    slackSend (color: 'good', message: '[ Sucesso ] O novo build esta disponivel em: http://192.168.33.10:81/ ', tokenCredentialId: 'slack-token')
+                }
+            }
+            stage ('Fazer o deploy em producao?') {
+                steps {
+                    script {
+                        slackSend (color: 'warning', message: "Para aplicar a mudança em produção, acesse [Janela de 10 minutos]: ${JOB_URL}", tokenCredentialId: 'slack-token')
+                        timeout(time: 10, unit: 'MINUTES') {
+                            input(id: "Deploy Gate", message: "Deploy em produção?", ok: 'Deploy')
+                        }
+                    }
+                }
+            }
+            stage (deploy) {
+                steps {
+                    script {
+                        try {
+                            build job: 'todo-list-producao', parameters: [[$class: 'StringParameterValue', name: 'image', value: dockerImage]]
+                        } catch (Exception e) {
+                            slackSend (color: 'error', message: "[ FALHA ] Não foi possivel subir o container em producao - ${BUILD_URL}", tokenCredentialId: 'slack-token')
+                            sh "echo $e"
+                            currentBuild.result = 'ABORTED'
+                            error('Erro')
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+# Etapa 10 - Intalacao sonarqube
+
+    # Subindo o container com o Sonarcube
+  Na máquina devops (Vagrant): docker run -d --name sonarqube -p 9000:9000 sonarqube:lts
+    # Acessar: http://192.168.33.10:9000
+    Usuário: admin
+    Senha: admin
+    Name: jenkins-todolist
+        Provide a token: enkins-todolist e anotar o seu token
+        Run analysis on your project > Other (JS, Python, PHP, ...) > Linux > django-todo-list
+        # Copie o shell script fornecido
+
+sonar-scanner \
+  -Dsonar.projectKey=enkins-todolist \
+  -Dsonar.sources=. \
+  -Dsonar.host.url=http://192.168.33.10:9000 \
+  -Dsonar.login=<seu token>
+ 
+    
+    
+# Etapa 11 - Crie um job para o escaneamento do seu código. 
+    
+    # Criar um job para Coverage com o nome: todo-list-sonarqube
+    # Gerenciamento de código fonte > Git
+        git: git@github.com:alura-cursos/jenkins-todo-list.git (Selecione as mesmas credenciais)
+        branch: master
+        Pool SCM: * * * * *
+        Delete workspace before build starts
+        Execute Script:
+
+    # Build > Adicionar passo no build > Executar Shell
+
+        #!/bin/bash
+        # Baixando o Sonarqube
+        wget https://s3.amazonaws.com/caelum-online-public/1110-jenkins/05/sonar-scanner-cli-3.3.0.1492-linux.zip
+
+        # Descompactando o scanner
+        unzip sonar-scanner-cli-3.3.0.1492-linux.zip
+
+        # Rodando o Scanner
+        ./sonar-scanner-3.3.0.1492-linux/bin/sonar-scanner   -X \
+          -Dsonar.projectKey=jenkins-todolist \
+          -Dsonar.sources=. \
+          -Dsonar.host.url=http://192.168.33.10:9000 \
+          -Dsonar.login=<seu token>
