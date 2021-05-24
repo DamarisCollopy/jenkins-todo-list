@@ -212,7 +212,7 @@ Gerenciar Jenkins -> Configurar o sistema -> Nuvem
 - A abordagem escolhida permite que a mesma imagem construída no processo seja utilizada para testes, validações e também para rodar em produção, visto que o arquivo .env de       cada ambiente
   é passado na execução do container
 
-Etapa 5 Parametros para subir no dockerhub
+# Etapa 5 Parametros para subir no dockerhub
 
  Instalar o plugin: Parameterized Trigger 
 
@@ -235,4 +235,36 @@ Etapa 5 Parametros para subir no dockerhub
  Mudar no job de teste a imagem para: ${image}
  
     docker run -d -p 82:8000 -v /var/run/mysqld/mysqld.sock:/var/run/mysqld/mysqld.sock -v /var/lib/jenkins/workspace/jenkins-todo-list       principal/to_do/.env:/usr/src/app/to_do/.env --name=todo-list-teste ${image}
+    
+
+Etapa 6 - Deploy desenvolvimento, integracao com o slack
+
+   - Agora a gente vai começar a montar o nosso job que vai fazer o deploy pra desenvolvimento, vai publicar nossa aplicação no ambiente de desenvolvimento.
+     Pra isso a gente vai começar a configurar algumas partes do job que vão notificar o desenvolvedor que tá pronta a aplicação pra ele rodar.
+   - Pra isso a gente vai usar o Slack, o Slack é uma das ferramentas mais comuns de comunicação que a gente tem no mercado, e ela é simples de trabalhar e tem uma integração
+     boa com o Jenkins.
+   - Link Slack https://app.slack.com
+
+    # Criar app no slack: cursoalurajenkinssede.slack.com
+    
+    URL básico: <Url do Jenkins app no seu canal do Slack>
+    Token de integração: <Token do Jenkins app no seu canal do Slack>
+
+    # Instalar o plugin do slack: Gerenciar Jenkins > Gerenciar Plugins > Disponíveis: Slack Notification
+    
+        # Configurar no jenkins: Gerenciar Jenkins > Configuraçao o sistema > Global Slack Notifier Settings
+        
+            # Slack compatible app URL (optional): <Url do Jenkins app no seu canal do Slack>
+            
+            # Integration Token Credential ID : ADD > Jenkins > Secret Text
+            
+                # Secret: <Token do Jenkins app no seu canal do Slack>
+                # ID: slack-token
+                
+            # Channel or Slack ID: pipeline-todolist
+
+    # As notificações vão funcionar da seguinte maneira:
+    
+    Job: todo-list-desenvolvimento será feito pelo Jenkinsfile (em andamento)
+    Job: todo-list-producao: Ações de pós-build > Slack Notifications: Notify Success e Notify Every Failure
 
