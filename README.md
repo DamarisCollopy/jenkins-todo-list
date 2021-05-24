@@ -237,7 +237,7 @@ Gerenciar Jenkins -> Configurar o sistema -> Nuvem
     docker run -d -p 82:8000 -v /var/run/mysqld/mysqld.sock:/var/run/mysqld/mysqld.sock -v /var/lib/jenkins/workspace/jenkins-todo-list       principal/to_do/.env:/usr/src/app/to_do/.env --name=todo-list-teste ${image}
     
 
-Etapa 6 - Deploy desenvolvimento, integracao com o slack
+Etapa 6 - Integracao com o slack
 
    - Agora a gente vai começar a montar o nosso job que vai fazer o deploy pra desenvolvimento, vai publicar nossa aplicação no ambiente de desenvolvimento.
      Pra isso a gente vai começar a configurar algumas partes do job que vão notificar o desenvolvedor que tá pronta a aplicação pra ele rodar.
