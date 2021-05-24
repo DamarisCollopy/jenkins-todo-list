@@ -237,7 +237,7 @@ Gerenciar Jenkins -> Configurar o sistema -> Nuvem
     docker run -d -p 82:8000 -v /var/run/mysqld/mysqld.sock:/var/run/mysqld/mysqld.sock -v /var/lib/jenkins/workspace/jenkins-todo-list       principal/to_do/.env:/usr/src/app/to_do/.env --name=todo-list-teste ${image}
     
 
-Etapa 6 - Integracao com o slack
+# Etapa 6 - Integracao com o slack
 
    - Agora a gente vai começar a montar o nosso job que vai fazer o deploy pra desenvolvimento, vai publicar nossa aplicação no ambiente de desenvolvimento.
      Pra isso a gente vai começar a configurar algumas partes do job que vão notificar o desenvolvedor que tá pronta a aplicação pra ele rodar.
@@ -268,3 +268,90 @@ Etapa 6 - Integracao com o slack
     Job: todo-list-desenvolvimento será feito pelo Jenkinsfile (em andamento)
     Job: todo-list-producao: Ações de pós-build > Slack Notifications: Notify Success e Notify Every Failure
 
+# Etapa 7 - Crie o job para o ambiente de desenvolvimento.
+
+A fazer a integração com o Slack
+
+Instalar e configurar a aplicação Jenkins CI no Slack
+
+Instalar e configurar o plugin Slack Notification no Jenkins
+
+Uma introdução a processos contínuos com Groovy
+
+A definir um pipeline, criando um job que, entre os seus passos, vai rodar a aplicação e notificar o usuário no Slack
+
+    # Novo Job: todo-list-desenvolvimento:
+    
+    # Tipo: Pipeline
+    
+    # Este build é parametrizado com 2 Builds de Strings:
+    
+        Nome: image
+        Valor padrão: - Vazio, pois o valor sera recebido do job anterior.
+
+        Nome: DOCKER_HOST
+        Valor padrão: tcp://127.0.0.1:2376
+
+    pipeline {
+
+        agent any    
+
+        stages {
+            stage('Oi Mundo Pipeline como Codigo') {
+                steps {
+                    sh 'echo "Oi Mundo"'
+                }
+            }
+        }
+    }
+
+    pipeline {
+        environment {
+            dockerImage = "${image}"
+        }
+        agent any
+
+        stages {
+            stage('Carregando o ENV de desenvolvimento') {
+                steps {
+                    configFileProvider([configFile(fileId: '<id do seu arquivo de desenvolvimento>', variable: 'env')]) {
+                        sh 'cat $env > .env'
+                    }
+                }
+            }
+            stage('Derrubando o container antigo') {
+                steps {
+                    script {
+                        try {
+                            sh 'docker rm -f django-todolist-dev'
+                        } catch (Exception e) {
+                            sh "echo $e"
+                        }
+                    }
+                }
+            }        
+            stage('Subindo o container novo') {
+                steps {
+                    script {
+                        try {
+                            sh 'docker run -d -p 81:8000 -v /var/run/mysqld/mysqld.sock:/var/run/mysqld/mysqld.sock -v /var/lib/jenkins/workspace/jenkins-todo-list-desenvolvimento/.env:/usr/src/app/to_do/.env --name=django-todolist-dev ' + dockerImage + ':latest'
+                        } catch (Exception e) {
+                            slackSend (color: 'error', message: "[ FALHA ] Não foi possivel subir o container - ${BUILD_URL} em ${currentBuild.duration}s", tokenCredentialId: 'slack-token')
+                            sh "echo $e"
+                            currentBuild.result = 'ABORTED'
+                            error('Erro')
+                        }
+                    }
+                }
+            }
+            stage('Notificando o usuario') {
+                steps {
+                    slackSend (color: 'good', message: '[ Sucesso ] O novo build esta disponivel em: http://192.168.33.10:81/ ', tokenCredentialId: 'slack-token')
+                }
+            }
+        }
+    }
+
+    # todo-list-principal
+    
+    # Definir post build: image=$image
